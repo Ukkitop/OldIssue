@@ -8,107 +8,135 @@ using System.Threading.Tasks;
 
 namespace Semaphores
 {
-    class Program
+    internal class Program
     {
-        private static bool[] oldArray;
-        private static Random rnd = new Random(100);
-        private static Semaphore[] _pool;
-        static void Main(string[] args)
+        public enum OldState
         {
-            int count = Int32.Parse(Console.ReadLine());
-            oldArray = new bool[count];
-            _pool = new Semaphore[count];
-            for (int i = 0; i < count; i++)
-            {
-                _pool[i] = new Semaphore(1, 1);
-            }
+            Eat,
+            Wait,
+            Talk
+        }
 
-            for (int i = 0; i < oldArray.Length; i++)
+        private struct Old
+        {
+            public OldState state { get; set; }
+        }
+
+        struct Fork
+        {
+            public bool isTaken { get; set; }
+        }
+
+        private static Fork[] forkArray;
+        private static Old[] oldArray;
+        private static Random rnd = new Random(100);
+        private static Semaphore semaphore;
+
+        private static void Main(string[] args)
+        {
+            var count = int.Parse(Console.ReadLine());
+            oldArray = new Old[count];
+            forkArray = new Fork[count];
+            int semaphoreNumber = Int32.MaxValue;
+            for (var i = 0; i < forkArray.Length; i++)
             {
-                    oldArray[i] = false;
-                Thread t = new Thread(new ParameterizedThreadStart(OldWork));
+                forkArray[i].isTaken = false;
+                //Thread.Sleep(500);
+            }
+            if (count % 2 != 0)
+            {
+                semaphoreNumber = count / 2;
+            }
+            else semaphoreNumber = count / 2 - 1;
+            semaphore = new Semaphore(semaphoreNumber, semaphoreNumber);
+
+            for (var i = 0; i < oldArray.Length; i++)
+            {
+                oldArray[i].state = OldState.Talk;
+                var t = new Thread(new ParameterizedThreadStart(OldWork));
                 t.Start(i);
                 //Thread.Sleep(500);
             }
-            
-
         }
 
         public static void OldWork(object num)
         {
-            var number = Int32.Parse(num.ToString());
+            var number = int.Parse(num.ToString());
             while (true)
             {
                 Console.WriteLine($"old#{num} talk ");
-                Thread.Sleep(rnd.Next(1000, 5000));
-                Console.WriteLine($"old#{num} try to eat");
-                
+                oldArray[number].state = OldState.Talk;
+                Thread.Sleep(1000);
+
                 if (number == 0)
                 {
-                    while (oldArray[oldArray.Length - 1] || oldArray[number])
+                    Console.WriteLine($"Old #{number} wait forks");
+                    oldArray[number].state = OldState.Wait;
+                    semaphore.WaitOne();
+                    Monitor.Enter(forkArray);
+                    if (forkArray[number].isTaken || forkArray[forkArray.Length - 1].isTaken)
                     {
-                       // Console.WriteLine($"old#{num} wait forks");
-                       // Thread.Sleep(rnd.Next(1000, 5000));
+                        Thread.Sleep(1000);
+                        if (forkArray[number].isTaken || forkArray[forkArray.Length - 1].isTaken)
+                        {
+                            Monitor.Exit(forkArray);
+                            semaphore.Release();
+                            continue;
+                        }
+
+
                     }
-                    oldArray[number] = true;
-                    _pool[_pool.Length - 1].WaitOne();
-                   _pool[number].WaitOne();
-                   
-                   
+
+                    forkArray[number].isTaken = true;
+                    forkArray[forkArray.Length - 1].isTaken = true;
+                    Monitor.Exit(forkArray);
+                    oldArray[number].state = OldState.Eat;
+                    Console.WriteLine($"Old #{number} eating");
+                    Thread.Sleep(1000);
+                    Monitor.Enter(forkArray);
+                    forkArray[number].isTaken = false;
+                    forkArray[forkArray.Length - 1].isTaken = false;
+                    Monitor.Exit(forkArray);
+                    semaphore.Release();
+                    Console.WriteLine($"Old #{number} finish eating");
                 }
-                else if (number == _pool.Length - 1)
-                {
-                    while (oldArray[number - 1] || oldArray[0])
-                    {
-                       // Console.WriteLine($"old#{num} wait forks");
-                       // Thread.Sleep(rnd.Next(1000, 5000));
-                    }
-                    oldArray[number] = true;
-                    _pool[_pool.Length - 1].WaitOne();
-                    _pool[number].WaitOne();
-                    
-                    
-                }
+               
                 else
                 {
-                    while (oldArray[number - 1] || oldArray[number + 1])
+                    Console.WriteLine($"Old #{number} wait forks");
+                    oldArray[number].state = OldState.Wait;
+                    semaphore.WaitOne();
+                    Monitor.Enter(forkArray);
+                    if (forkArray[number].isTaken || forkArray[number - 1].isTaken)
                     {
-                       // Console.WriteLine($"old#{num} wait forks");
-                        //Thread.Sleep(rnd.Next(1000, 5000));
+                        Thread.Sleep(1000);
+                        if (forkArray[number].isTaken || forkArray[number - 1].isTaken)
+                        {
+                            Monitor.Exit(forkArray);
+                            semaphore.Release();
+                            continue;
+                        }
+                        
+                        
                     }
-                    oldArray[number] = true;
-                    _pool[number - 1].WaitOne(); 
-                    _pool[number].WaitOne();
                     
+                        forkArray[number].isTaken = true;
+                        forkArray[number - 1].isTaken = true;
+                        Monitor.Exit(forkArray);
+                        oldArray[number].state = OldState.Eat;
+                        Console.WriteLine($"Old #{number} eating");
+                        Thread.Sleep(1000);
+                        Monitor.Enter(forkArray);
+                        forkArray[number].isTaken = false;
+                        forkArray[number - 1].isTaken = false;
+                        Monitor.Exit(forkArray);
+                        semaphore.Release();
+                        Console.WriteLine($"Old #{number} finish eating");
+                    
+                }
 
-                }
-                
-                
-                Console.WriteLine($"Old#{number} eating");
-                Thread.Sleep(rnd.Next(1000, 5000));
-                if (number == 0)
-                {
-                    oldArray[number] = false;
-                    _pool[_pool.Length - 1].Release();
-                    _pool[number].Release();
-                    
-                }
-                else if (number == _pool.Length - 1)
-                {
-                    oldArray[number] = false;
-                    _pool[number].Release();
-                    _pool[_pool.Length - 1].Release();
-                    
-                }
-                else
-                {
-                    oldArray[number] = false;
-                    _pool[number - 1].Release();
-                    _pool[number].Release();
-                   
 
-                }
-                Console.WriteLine($"Old#{number}finish eating");
+              
             }
         }
     }
