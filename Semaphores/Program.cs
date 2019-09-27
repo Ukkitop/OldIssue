@@ -76,7 +76,10 @@ namespace Semaphores
                     Monitor.Enter(forkArray);
                     if (forkArray[number].isTaken || forkArray[forkArray.Length - 1].isTaken)
                     {
+                        Monitor.Exit(forkArray);
+                        
                         Thread.Sleep(1000);
+                        Monitor.Enter(forkArray);
                         if (forkArray[number].isTaken || forkArray[forkArray.Length - 1].isTaken)
                         {
                             Monitor.Exit(forkArray);
@@ -109,7 +112,9 @@ namespace Semaphores
                     Monitor.Enter(forkArray);
                     if (forkArray[number].isTaken || forkArray[number - 1].isTaken)
                     {
+                        Monitor.Exit(forkArray);
                         Thread.Sleep(1000);
+                        Monitor.Enter(forkArray);
                         if (forkArray[number].isTaken || forkArray[number - 1].isTaken)
                         {
                             Monitor.Exit(forkArray);
