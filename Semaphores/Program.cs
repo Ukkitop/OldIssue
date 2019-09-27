@@ -42,20 +42,44 @@ namespace Semaphores
                 Console.WriteLine($"old#{num} talk ");
                 Thread.Sleep(rnd.Next(1000, 5000));
                 Console.WriteLine($"old#{num} try to eat");
+                
                 if (number == 0)
                 {
-                   _pool[_pool.Length - 1].WaitOne();
+                    while (oldArray[oldArray.Length - 1] || oldArray[number])
+                    {
+                       // Console.WriteLine($"old#{num} wait forks");
+                       // Thread.Sleep(rnd.Next(1000, 5000));
+                    }
+                    oldArray[number] = true;
+                    _pool[_pool.Length - 1].WaitOne();
                    _pool[number].WaitOne();
+                   
+                   
                 }
                 else if (number == _pool.Length - 1)
                 {
+                    while (oldArray[number - 1] || oldArray[0])
+                    {
+                       // Console.WriteLine($"old#{num} wait forks");
+                       // Thread.Sleep(rnd.Next(1000, 5000));
+                    }
+                    oldArray[number] = true;
                     _pool[_pool.Length - 1].WaitOne();
-                    _pool[0].WaitOne();
+                    _pool[number].WaitOne();
+                    
+                    
                 }
                 else
                 {
+                    while (oldArray[number - 1] || oldArray[number + 1])
+                    {
+                       // Console.WriteLine($"old#{num} wait forks");
+                        //Thread.Sleep(rnd.Next(1000, 5000));
+                    }
+                    oldArray[number] = true;
                     _pool[number - 1].WaitOne(); 
-                    _pool[number].WaitOne(); 
+                    _pool[number].WaitOne();
+                    
 
                 }
                 
@@ -64,18 +88,24 @@ namespace Semaphores
                 Thread.Sleep(rnd.Next(1000, 5000));
                 if (number == 0)
                 {
+                    oldArray[number] = false;
                     _pool[_pool.Length - 1].Release();
                     _pool[number].Release();
+                    
                 }
                 else if (number == _pool.Length - 1)
                 {
+                    oldArray[number] = false;
+                    _pool[number].Release();
                     _pool[_pool.Length - 1].Release();
-                    _pool[0].Release();
+                    
                 }
                 else
                 {
+                    oldArray[number] = false;
                     _pool[number - 1].Release();
                     _pool[number].Release();
+                   
 
                 }
                 Console.WriteLine($"Old#{number}finish eating");
